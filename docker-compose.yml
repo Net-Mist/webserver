@@ -1,0 +1,39 @@
+version: '3'
+
+services:
+  traefik:
+    image: traefik:v2.1
+    restart: always
+    ports:
+      - 443:443
+      - 80:80
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./config/traefik.yml:/etc/traefik/traefik.yml
+    labels:        
+      # middleware redirect  
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"  
+      # global redirect to https  
+      - "traefik.http.routers.redirs.rule=hostregexp(`{host:.+}`)"  
+      - "traefik.http.routers.redirs.entrypoints=web"  
+      - "traefik.http.routers.redirs.middlewares=redirect-to-https" 
+
+  gitea:
+    image: gitea/gitea:1.8.0
+    environment:
+      - RUN_MODE=prod
+      - SSH_DOMAIN=git.colocpalaiseau.fr.to
+      - ROOT_URL=git.colocpalaiseau.fr.to
+      - INSTALL_LOCK=true
+      - DISABLE_REGISTRATION=true
+      - REQUIRE_SIGNIN_VIEW=true
+      - USER_UID=1000
+      - USER_GID=1000
+    restart: always
+    volumes:
+      - ./docker/gitea:/data
+    ports:
+      - "222:22"
+    labels:
+      - "traefik.http.routers.gitea.rule=Host(`gitea.localhost`)"
+      - traefik.http.services.gitea.loadbalancer.server.port=3000
