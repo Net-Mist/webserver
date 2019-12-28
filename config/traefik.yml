@@ -11,7 +11,7 @@ certificatesResolvers:
     acme:
       email: archimist.linux@gmail.com
       storage: /acme.json
-      caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+      # caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
       httpChallenge:
         # used during the challenge
         entryPoint: web

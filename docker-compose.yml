@@ -1,5 +1,11 @@
 version: '3'
 
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1496
+
 services:
   traefik:
     image: traefik:v2.1
@@ -22,8 +28,8 @@ services:
     image: gitea/gitea:1.8.0
     environment:
       - RUN_MODE=prod
-      - SSH_DOMAIN=git.colocpalaiseau.fr.to
-      - ROOT_URL=git.colocpalaiseau.fr.to
+      # - SSH_DOMAIN=templier.adh.crans.org
+      # - ROOT_URL=templier.adh.crans.org
       - INSTALL_LOCK=true
       - DISABLE_REGISTRATION=true
       - REQUIRE_SIGNIN_VIEW=true
@@ -35,5 +41,7 @@ services:
     ports:
       - "222:22"
     labels:
-      - "traefik.http.routers.gitea.rule=Host(`gitea.localhost`)"
+      - "traefik.http.routers.gitea.rule=Host(`templier.adh.crans.org`)"
       - traefik.http.services.gitea.loadbalancer.server.port=3000
+      - traefik.http.routers.gitea.tls=true
+      - traefik.http.routers.gitea.tls.certresolver=le
