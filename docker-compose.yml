@@ -16,32 +16,17 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config/traefik.yml:/etc/traefik/traefik.yml
-    labels:        
+      - ./config/acme.json:/acme.json
+    labels:
       # middleware redirect  
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"  
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https" 
+      # middleware hsts 
+      # - "traefik.http.middlewares.hsts.headers.framedeny=true"
+      # - "traefik.http.middlewares.hsts.headers.sslredirect=true"
+      - "traefik.http.middlewares.security_header.headers.stsPreload=true"
+      - "traefik.http.middlewares.security_header.headers.stsSeconds=15552000"
       # global redirect to https  
       - "traefik.http.routers.redirs.rule=hostregexp(`{host:.+}`)"  
       - "traefik.http.routers.redirs.entrypoints=web"  
       - "traefik.http.routers.redirs.middlewares=redirect-to-https" 
-
-  gitea:
-    image: gitea/gitea:1.8.0
-    environment:
-      - RUN_MODE=prod
-      # - SSH_DOMAIN=templier.adh.crans.org
-      # - ROOT_URL=templier.adh.crans.org
-      - INSTALL_LOCK=true
-      - DISABLE_REGISTRATION=true
-      - REQUIRE_SIGNIN_VIEW=true
-      - USER_UID=1000
-      - USER_GID=1000
-    restart: always
-    volumes:
-      - ./docker/gitea:/data
-    ports:
-      - "222:22"
-    labels:
-      - "traefik.http.routers.gitea.rule=Host(`templier.adh.crans.org`)"
-      - traefik.http.services.gitea.loadbalancer.server.port=3000
-      - traefik.http.routers.gitea.tls=true
-      - traefik.http.routers.gitea.tls.certresolver=le
+      

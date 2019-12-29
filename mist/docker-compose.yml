@@ -1,0 +1,92 @@
+version: '3'
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1496
+
+services:
+  postgres:
+    image: postgres:12.1-alpine
+    restart: always
+    volumes:
+      - ${DATA_ROOT}/mist/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=archive
+      - PGDATA=/var/lib/postgresql/data
+
+  nextcloud:
+    image: nextcloud:17
+    volumes:
+      - ${DATA_ROOT}/mist/nextcloud:/var/www/html
+    links:
+      - postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=archive
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_HOST=postgres
+      - NEXTCLOUD_ADMIN_USER=seb
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+    depends_on:
+      - postgres
+    labels:
+      - "traefik.http.routers.nextcloud.rule=Host(`nextcloud.colocpalaiseau.fr.to`)"
+      - traefik.http.routers.nextcloud.tls=true
+      - traefik.http.routers.nextcloud.tls.certresolver=le
+      - "traefik.http.routers.nextcloud.middlewares=security_header"
+
+  gitlab:
+    image: gitlab/gitlab-ce:11.10.1-ce.0
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+    volumes:
+      - ${DATA_ROOT}/mist/gitlab/config:/etc/gitlab
+      - ${DATA_ROOT}/mist/gitlab/logs:/var/log/gitlab
+      - ${DATA_ROOT}/mist/gitlab/data:/var/opt/gitlab
+    environment:
+      - GITLAB_OMNIBUS_CONFIG=
+        external_url 'http://gitlab.${ULR_NAMESPACE}';
+        unicorn['worker_processes'] = 3;
+        sidekiq['concurrency'] = 5;
+        prometheus_monitoring['enable'] = false;
+        gitlab_rails['gitlab_email_enabled'] = false;
+        gitlab_rails['rack_attack_git_basic_auth'] = {
+        'enabled' => true,
+        'ip_whitelist' => ['127.0.0.1'],
+        'maxretry' => 10,
+        'findtime' => 60,
+        'bantime' => 3600
+        };
+    labels:
+      - "traefik.http.routers.gitlab.rule=Host(`gitlab.colocpalaiseau.fr.to`)"
+      - traefik.http.routers.gitlab.tls=true
+      - traefik.http.routers.gitlab.tls.certresolver=le
+
+  gitea:
+    image: gitea/gitea:1.8.0
+    environment:
+      - RUN_MODE=prod
+      # - SSH_DOMAIN=templier.adh.crans.org
+      # - ROOT_URL=templier.adh.crans.org
+      - INSTALL_LOCK=true
+      - DISABLE_REGISTRATION=true
+      - REQUIRE_SIGNIN_VIEW=true
+      - USER_UID=1000
+      - USER_GID=1000
+    restart: always
+    volumes:
+      - ${DATA_ROOT}/mist/gitea:/data
+    ports:
+      - "22:22"
+    labels:
+      - "traefik.http.routers.gitea.rule=Host(`git.colocpalaiseau.fr.to`)"
+      - traefik.http.services.gitea.loadbalancer.server.port=3000
+      - traefik.http.routers.gitea.tls=true
+      - traefik.http.routers.gitea.tls.certresolver=le
