@@ -1,5 +1,7 @@
 providers:
+  # Autodetect docker containers
   docker: {}
+
 entryPoints:
   web:
     address: ":80"
@@ -11,7 +13,8 @@ certificatesResolvers:
     acme:
       email: archimist.linux@gmail.com
       storage: /acme.json
-      # caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
       httpChallenge:
-        # used during the challenge
+        # Use HTTP for challenge
+        # TODO: TLS-ALPN-01 is recommanded
+        # See https://docs.traefik.io/https/acme/
         entryPoint: web

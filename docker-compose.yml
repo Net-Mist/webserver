@@ -4,6 +4,7 @@ networks:
   default:
     driver: bridge
     driver_opts:
+      # Tell Docker that outside network MTU is limited
       com.docker.network.driver.mtu: 1496
 
 services:
@@ -14,6 +15,8 @@ services:
       - 443:443
       - 80:80
     volumes:
+      # TODO: Use rather Docker socket over TCP for security mesures
+      # See https://docs.traefik.io/providers/docker/
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config/traefik.yml:/etc/traefik/traefik.yml
       - ./config/acme.json:/acme.json
