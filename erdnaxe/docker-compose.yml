@@ -1,0 +1,66 @@
+version: '3'
+
+services:
+  erdnaxe_prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./erdnaxe/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./erdnaxe/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
+      - "${DATA_ROOT}/erdnaxe/prometheus:/prometheus"
+    restart: always
+
+  erdnaxe_alertmanager:
+    image: prom/alertmanager
+    volumes:
+      - ./erdnaxe/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    restart: always
+
+  erdnaxe_cadvisor:
+    image: google/cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    restart: always
+
+  erdnaxe_grafana:
+    image: grafana/grafana
+    volumes:
+      - "${DATA_ROOT}/erdnaxe/grafana:/var/lib/grafana:rw"
+    restart: always
+    user: "104"
+    environment:
+      - GF_SESSION_COOKIE_SECURE=true
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_SNAPSHOTS_EXTERNAL_ENABLED=false
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+    labels:
+      - "traefik.http.routers.grafana.rule=Host(`grafana.fr.to`)"
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
+      - traefik.http.routers.grafana.tls=true
+      - traefik.http.routers.grafana.tls.certresolver=le
+
+  funkwhale:
+    image: funkwhale/all-in-one:0.20.1
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # adapt to the pid/gid that own /srv/funkwhale/data
+      - PUID=1000
+      - PGID=1000
+      - FUNKWHALE_HOSTNAME=music-templier.adh.crans.org
+      - FUNKWHALE_PROTOCOL=http
+      - NGINX_MAX_BODY_SIZE=100M
+      - FUNKWHALE_API_IP=127.0.0.1
+      - FUNKWHALE_API_PORT=5000
+      - NESTED_PROXY=1
+    volumes:
+      - "${DATA_ROOT}/erdnaxe/funkwhale/data:/data"
+      - /mnt/tank/mediafiles/Musique:/music:ro
+    labels:
+      - "traefik.http.routers.funkwhale.rule=Host(`music-templier.adh.crans.org`)"
+      - "traefik.http.services.funkwhale.loadbalancer.server.port=5000"
+      - "traefik.http.routers.funkwhale.tls=true"
+      - "traefik.http.routers.funkwhale.tls.certresolver=le"
