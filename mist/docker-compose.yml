@@ -34,7 +34,7 @@ services:
     depends_on:
       - postgres
     labels:
-      - "traefik.http.routers.nextcloud.rule=Host(`nextcloud.colocpalaiseau.fr.to`)"
+      - "traefik.http.routers.nextcloud.rule=Host(`nextcloud.${ULR_NAMESPACE}`)"
       - traefik.http.routers.nextcloud.tls=true
       - traefik.http.routers.nextcloud.tls.certresolver=le
       - "traefik.http.routers.nextcloud.middlewares=security_header"
@@ -65,7 +65,7 @@ services:
         'bantime' => 3600
         };
     labels:
-      - "traefik.http.routers.gitlab.rule=Host(`gitlab.colocpalaiseau.fr.to`)"
+      - "traefik.http.routers.gitlab.rule=Host(`gitlab.${ULR_NAMESPACE}`)"
       - traefik.http.routers.gitlab.tls=true
       - traefik.http.routers.gitlab.tls.certresolver=le
 
@@ -73,8 +73,6 @@ services:
     image: gitea/gitea:1.8.0
     environment:
       - RUN_MODE=prod
-      # - SSH_DOMAIN=templier.adh.crans.org
-      # - ROOT_URL=templier.adh.crans.org
       - INSTALL_LOCK=true
       - DISABLE_REGISTRATION=true
       - REQUIRE_SIGNIN_VIEW=true
@@ -86,7 +84,7 @@ services:
     ports:
       - "22:22"
     labels:
-      - "traefik.http.routers.gitea.rule=Host(`git.colocpalaiseau.fr.to`)"
+      - "traefik.http.routers.gitea.rule=Host(`git.${ULR_NAMESPACE}`)"
       - traefik.http.services.gitea.loadbalancer.server.port=3000
       - traefik.http.routers.gitea.tls=true
       - traefik.http.routers.gitea.tls.certresolver=le
