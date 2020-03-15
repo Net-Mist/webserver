@@ -18,7 +18,7 @@ services:
       - PGDATA=/var/lib/postgresql/data
 
   nextcloud:
-    image: nextcloud:17
+    image: nextcloud:18
     volumes:
       - ${DATA_ROOT}/mist/nextcloud:/var/www/html
     links:
