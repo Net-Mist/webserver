@@ -2,3 +2,4 @@ docker
 dump*
 .env
 acme.json
+secret*

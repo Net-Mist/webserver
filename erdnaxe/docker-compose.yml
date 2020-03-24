@@ -1,8 +1,11 @@
 version: '3'
 
 services:
+
+  #############################################################################
+  # Monitoring
   erdnaxe_prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:v2.16.0
     volumes:
       - ./erdnaxe/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./erdnaxe/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
@@ -10,7 +13,7 @@ services:
     restart: always
 
   erdnaxe_alertmanager:
-    image: prom/alertmanager
+    image: prom/alertmanager:v0.20.0
     volumes:
       - ./erdnaxe/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     restart: always
@@ -38,29 +41,25 @@ services:
       - GF_USERS_ALLOW_ORG_CREATE=false
     labels:
       - "traefik.http.routers.grafana.rule=Host(`grafana.fr.to`)"
-      - traefik.http.services.grafana.loadbalancer.server.port=3000
-      - traefik.http.routers.grafana.tls=true
-      - traefik.http.routers.grafana.tls.certresolver=le
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.routers.grafana.tls.certresolver=le"
 
-  funkwhale:
-    image: funkwhale/all-in-one:0.20.1
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      # adapt to the pid/gid that own /srv/funkwhale/data
-      - PUID=1000
-      - PGID=1000
-      - FUNKWHALE_HOSTNAME=music-templier.adh.crans.org
-      - FUNKWHALE_PROTOCOL=http
-      - NGINX_MAX_BODY_SIZE=100M
-      - FUNKWHALE_API_IP=127.0.0.1
-      - FUNKWHALE_API_PORT=5000
-      - NESTED_PROXY=1
+  #############################################################################
+  # Sync services
+  erdnaxe_syncserver:
+    image: mozilla/syncserver:latest
+    restart: always
     volumes:
-      - "${DATA_ROOT}/erdnaxe/funkwhale/data:/data"
-      - /mnt/tank/mediafiles/Musique:/music:ro
-    labels:
-      - "traefik.http.routers.funkwhale.rule=Host(`music-templier.adh.crans.org`)"
-      - "traefik.http.services.funkwhale.loadbalancer.server.port=5000"
-      - "traefik.http.routers.funkwhale.tls=true"
-      - "traefik.http.routers.funkwhale.tls.certresolver=le"
+      # owned by 1001:1001
+      - "${DATA_ROOT}/erdnaxe/syncserver:/data:rw"
+      # generate using `head -c 20 /dev/urandom | sha1sum`
+      - "./erdnaxe/syncserver/secretfile:/secretfile:ro"
+    environment:
+      - TZ=Europe/Paris
+      - SYNCSERVER_PUBLIC_URL=https://templier.adh.crans.org:5000
+      - SYNCSERVER_SECRET_FILE=/secretfile
+      - SYNCSERVER_SQLURI=sqlite:////tmp/syncserver.db
+      - SYNCSERVER_BATCH_UPLOAD_ENABLED=true
+      - SYNCSERVER_FORCE_WSGI_ENVIRON=false
+      - PORT=5000
