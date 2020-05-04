@@ -3,6 +3,27 @@ version: '3'
 services:
 
   #############################################################################
+  # Database
+  erdnaxe_mysql:
+    image: mariadb:10.4
+    restart: always
+    environment:
+      - "MYSQL_ROOT_PASSWORD=${ERDNAXE_ROOT_MYSQL_PASSWD}"
+      - MYSQL_USER=ctfd
+      - "MYSQL_PASSWORD=${ERDNAXE_CTFD_MYSQL_PASSWD}"
+      - MYSQL_DATABASE=ctfd
+    volumes:
+      - "${DATA_ROOT}/erdnaxe/mysql:/var/lib/mysql"
+    # This command is required to set important mariadb defaults
+    command: [mysqld, --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --wait_timeout=28800, --log-warnings=0]
+
+  erdnaxe_redis:
+    image: redis:4
+    restart: always
+    volumes:
+      - "${DATA_ROOT}/erdnaxe/redis:/data"
+
+  #############################################################################
   # Monitoring
   erdnaxe_prometheus:
     image: prom/prometheus:v2.16.0
@@ -44,6 +65,35 @@ services:
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
       - "traefik.http.routers.grafana.tls=true"
       - "traefik.http.routers.grafana.tls.certresolver=le"
+
+  #############################################################################
+  # CTFd services
+  erdnaxe_ctfd:
+    image: ctfd/ctfd:latest
+    user: root
+    restart: always
+    environment:
+      - UPLOAD_FOLDER=/var/uploads
+      - "DATABASE_URL=mysql+pymysql://ctfd:${ERDNAXE_CTFD_MYSQL_PASSWD}@erdnaxe_mysql/ctfd"
+      - REDIS_URL=redis://erdnaxe_redis:6379
+      - WORKERS=1
+      - LOG_FOLDER=/var/log/CTFd
+      - ACCESS_LOG=-
+      - ERROR_LOG=-
+      - "REVERSE_PROXY=1,1,1,0,0"
+      - MAILFROM_ADDR=ctf@crans.org
+      - MAIL_SERVER=smtp.crans.org
+      - MAIL_PORT=25
+    volumes:
+      - "${DATA_ROOT}/erdnaxe/CTFd/logs:/var/log/CTFd"
+      - "${DATA_ROOT}/erdnaxe/CTFd/uploads:/var/uploads"
+    depends_on:
+      - erdnaxe_mysql
+    labels:
+      - "traefik.http.routers.ctfd.rule=Host(`ctf.adh.crans.org`)"
+      - "traefik.http.services.ctfd.loadbalancer.server.port=8000"
+      - "traefik.http.routers.ctfd.tls=true"
+      - "traefik.http.routers.ctfd.tls.certresolver=le"
 
   #############################################################################
   # Sync services
